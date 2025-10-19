@@ -1,0 +1,59 @@
+{
+  "users": [
+    {
+      "id": "user_1",
+      "name": "田中太郎",
+      "language": "ja",
+      "style_preset": "biz_formal",
+      "description": "ビジネス用の丁寧な敬語で、結論を先に述べ、署名を付けるスタイル"
+    },
+    {
+      "id": "user_2",
+      "name": "田中花子",
+      "language": "ja", 
+      "style_preset": "emoji_casual",
+      "description": "カジュアルで親しみやすい文体で、適度に絵文字を使うスタイル"
+    },
+    {
+      "id": "user_3",
+      "name": "John Smith",
+      "language": "en",
+      "style_preset": "biz_formal",
+      "description": "Professional business English with formal tone and clear structure"
+    },
+    {
+      "id": "user_4",
+      "name": "Jane Doe",
+      "language": "en",
+      "style_preset": "emoji_casual", 
+      "description": "Casual and friendly English with appropriate emojis"
+    }
+  ],
+  "default_user": "user_1",
+  "style_presets": {
+    "biz_formal": {
+      "name": "ビジネス正式",
+      "description": "敬語・結論先出し・署名付き",
+      "max_length": 200,
+      "use_emoji": false,
+      "conclusion_first": true,
+      "signature": "よろしくお願いいたします。"
+    },
+    "emoji_casual": {
+      "name": "カジュアル絵文字",
+      "description": "短文・軽い絵文字",
+      "max_length": 100,
+      "use_emoji": true,
+      "conclusion_first": false,
+      "signature": "😊"
+    },
+    "technical": {
+      "name": "技術的",
+      "description": "技術的で正確な表現",
+      "max_length": 300,
+      "use_emoji": false,
+      "conclusion_first": true,
+      "signature": ""
+    }
+  }
+}

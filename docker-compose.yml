@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # フロントエンド (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - sensechat-network
+
+  # バックエンド (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/sensechat.db
+      - USERS_CONFIG=/app/config/users.json
+      - LOG_LEVEL=INFO
+      - DEBUG=true
+    volumes:
+      - ./backend:/app
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - sensechat-network
+
+  # データベース初期化（初回のみ）
+  db-init:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: python scripts/init_db.py
+    environment:
+      - DATABASE_URL=sqlite:///./data/sensechat.db
+    volumes:
+      - ./backend:/app
+      - ./config:/app/config
+      - ./data:/app/data
+    networks:
+      - sensechat-network
+    profiles:
+      - init
+
+networks:
+  sensechat-network:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local
+  logs:
+    driver: local
