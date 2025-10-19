@@ -51,8 +51,11 @@
 - **テキスト要約**: 軽量なルールベース + パターンマッチング
 
 #### クラウドAPI活用
-- **LLM再構成**: OpenAI GPT-3.5-turbo API
-- **代替**: Anthropic Claude API または Google PaLM API
+- **LLM再構成**: OpenAI GPT-4 API（メイン）
+- **代替**: OpenRouter経由で複数モデル対応
+  - Claude-3.5-Sonnet (Anthropic)
+  - GPT-4o (OpenAI)
+  - Gemini Pro (Google)
 - **フォールバック**: 複数APIの自動切り替え
 
 #### モデル選択理由
@@ -86,10 +89,11 @@
 
 #### コスト見積もり（家族内使用）
 - **想定使用量**: 100メッセージ/日 × 200 tokens/メッセージ = 20K tokens/日
-- **Google PaLM API**: $0.001/1K tokens → 月額約$0.6
-- **OpenAI GPT-3.5-turbo**: $0.002/1K tokens → 月額約$1.2
+- **OpenAI GPT-4**: $0.03/1K tokens → 月額約$18
+- **OpenRouter (Claude-3.5-Sonnet)**: $0.003/1K tokens → 月額約$1.8
+- **OpenRouter (GPT-4o)**: $0.005/1K tokens → 月額約$3
 
-**推奨**: 家族内使用ではGoogle PaLM API（コスト重視）
+**推奨**: 家族内使用ではOpenRouter経由（コスト・品質バランス）
 
 ### セキュリティ（簡易版）
 - **通信**: HTTPS（開発時はHTTP可）

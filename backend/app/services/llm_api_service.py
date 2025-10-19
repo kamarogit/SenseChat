@@ -14,11 +14,13 @@ class LLMAPIService:
     
     def __init__(self):
         self.providers = {
-            'google_palm': GooglePaLMClient(),
-            'openai': OpenAIClient(),
-            'anthropic': AnthropicClient()
+            'openai_gpt4': OpenAIClient(),
+            'openrouter_claude': OpenRouterClient('anthropic/claude-3.5-sonnet'),
+            'openrouter_gpt4o': OpenRouterClient('openai/gpt-4o'),
+            'openrouter_gemini': OpenRouterClient('google/gemini-pro')
         }
-        self.current_provider = 'google_palm'
+        # 環境変数からデフォルトプロバイダーを取得
+        self.current_provider = os.getenv("DEFAULT_LLM_PROVIDER", "openai_gpt4")
         self.last_token_count = 0
         
     async def reconstruct_message(
@@ -87,59 +89,64 @@ class LLMAPIService:
 """
         return prompt
 
-class GooglePaLMClient:
-    """Google PaLM API クライアント"""
+class OpenRouterClient:
+    """OpenRouter API クライアント"""
     
-    def __init__(self):
-        self.api_key = os.getenv("GOOGLE_PALM_API_KEY")
-        self.base_url = "https://generativelanguage.googleapis.com/v1beta"
+    def __init__(self, model: str):
+        self.model = model
+        self.api_key = os.getenv("OPENROUTER_API_KEY")
+        self.base_url = "https://openrouter.ai/api/v1"
         
     async def generate(self, prompt: str, max_tokens: int = 200, temperature: float = 0.7) -> Dict[str, Any]:
-        """Google PaLM API でテキスト生成"""
+        """OpenRouter API でテキスト生成"""
         if not self.api_key:
-            raise Exception("Google PaLM API key not configured")
+            raise Exception("OpenRouter API key not configured")
         
-        url = f"{self.base_url}/models/gemini-pro:generateContent?key={self.api_key}"
+        url = f"{self.base_url}/chat/completions"
         
         payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }],
-            "generationConfig": {
-                "maxOutputTokens": max_tokens,
-                "temperature": temperature
-            }
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://sensechat-mvp.local",
+            "X-Title": "SenseChat MVP"
         }
         
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=payload)
+            response = await client.post(url, json=payload, headers=headers)
             response.raise_for_status()
             
             data = response.json()
-            text = data["candidates"][0]["content"]["parts"][0]["text"]
+            text = data["choices"][0]["message"]["content"]
             
             return {
                 "text": text,
-                "confidence": 0.8,
-                "token_count": len(prompt.split()) + len(text.split())
+                "confidence": 0.9,
+                "token_count": data["usage"]["total_tokens"]
             }
 
 class OpenAIClient:
-    """OpenAI API クライアント"""
+    """OpenAI API クライアント（GPT-4）"""
     
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
         self.base_url = "https://api.openai.com/v1"
         
     async def generate(self, prompt: str, max_tokens: int = 200, temperature: float = 0.7) -> Dict[str, Any]:
-        """OpenAI API でテキスト生成"""
+        """OpenAI GPT-4 API でテキスト生成"""
         if not self.api_key:
             raise Exception("OpenAI API key not configured")
         
         url = f"{self.base_url}/chat/completions"
         
         payload = {
-            "model": "gpt-3.5-turbo",
+            "model": "gpt-4",
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
             "temperature": temperature
@@ -159,46 +166,8 @@ class OpenAIClient:
             
             return {
                 "text": text,
-                "confidence": 0.9,
+                "confidence": 0.95,
                 "token_count": data["usage"]["total_tokens"]
             }
 
-class AnthropicClient:
-    """Anthropic Claude API クライアント"""
-    
-    def __init__(self):
-        self.api_key = os.getenv("ANTHROPIC_API_KEY")
-        self.base_url = "https://api.anthropic.com/v1"
-        
-    async def generate(self, prompt: str, max_tokens: int = 200, temperature: float = 0.7) -> Dict[str, Any]:
-        """Anthropic Claude API でテキスト生成"""
-        if not self.api_key:
-            raise Exception("Anthropic API key not configured")
-        
-        url = f"{self.base_url}/messages"
-        
-        payload = {
-            "model": "claude-3-sonnet-20240229",
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "messages": [{"role": "user", "content": prompt}]
-        }
-        
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json",
-            "anthropic-version": "2023-06-01"
-        }
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=payload, headers=headers)
-            response.raise_for_status()
-            
-            data = response.json()
-            text = data["content"][0]["text"]
-            
-            return {
-                "text": text,
-                "confidence": 0.85,
-                "token_count": data["usage"]["input_tokens"] + data["usage"]["output_tokens"]
-            }
+# AnthropicClient は OpenRouterClient に統合されたため削除

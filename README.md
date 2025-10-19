@@ -126,7 +126,7 @@ USERS_CONFIG=config/users.json
 - **データベース**: SQLite + FAISS
 - **AI/ML**: 
   - ローカル: sentence-transformers (Embedding)
-  - クラウド: Google PaLM API (LLM再構成)
+  - クラウド: OpenAI GPT-4 / OpenRouter (LLM再構成)
 
 ### システム構成
 ```
@@ -155,8 +155,9 @@ USERS_CONFIG=config/users.json
 
 ### 家族内使用想定
 - **使用量**: 100メッセージ/日
-- **Google PaLM API**: 月額約$0.6
-- **OpenAI GPT-3.5-turbo**: 月額約$1.2
+- **OpenAI GPT-4**: 月額約$18（高品質）
+- **OpenRouter (Claude-3.5-Sonnet)**: 月額約$1.8（推奨）
+- **OpenRouter (GPT-4o)**: 月額約$3（バランス）
 
 ## 🔧 開発
 
