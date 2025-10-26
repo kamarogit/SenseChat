@@ -8,13 +8,14 @@ from app.schemas import (
     DeliverRequest, DeliverResponse
 )
 from app.database import get_db
-from app.models import Message, Thread, Inbox, User
+from app.models import Message, Thread, Inbox, User, MessageRendering
 from app.services.embedding_service import EmbeddingService
 from app.services.llm_api_service import LLMAPIService
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
 import uuid
+import json
 
 router = APIRouter()
 
@@ -117,6 +118,19 @@ async def render_message(
             neighbors=neighbors
         )
         
+        # 5. 再構成されたテキストをDBに保存
+        rendering = MessageRendering(
+            message_id=message.id,
+            recipient_id=request.recipient_id,
+            rendered_text=rendered_text,
+            confidence=str(confidence),
+            style_applied=recipient.style_preset
+        )
+        
+        db.add(rendering)
+        db.commit()
+        db.refresh(rendering)
+        
         return RenderResponse(
             text=rendered_text,
             confidence=confidence,
@@ -164,30 +178,45 @@ async def deliver_message(
 @router.get("/threads/{thread_id}/messages")
 async def get_thread_messages(
     thread_id: str,
+    current_user: str = Depends(get_current_user),
     limit: int = 20,
     offset: int = 0,
     db: Session = Depends(get_db)
 ):
-    """スレッドのメッセージ一覧を取得"""
+    """スレッドのメッセージ一覧を取得（SenseChat MVP対応）"""
     try:
+        # メッセージとその再構成を取得
         messages = db.query(Message).filter(
             Message.thread_id == thread_id
         ).offset(offset).limit(limit).all()
         
+        result_messages = []
+        for msg in messages:
+            # 送信者の場合は元のテキスト、受信者の場合は再構成されたテキスト
+            if msg.sender_id == current_user:
+                # 送信者: 元のテキストを表示
+                text = msg.original_text
+            else:
+                # 受信者: 再構成されたテキストを取得
+                rendering = db.query(MessageRendering).filter(
+                    MessageRendering.message_id == msg.id,
+                    MessageRendering.recipient_id == current_user
+                ).first()
+                text = rendering.rendered_text if rendering else msg.original_text
+            
+            result_messages.append({
+                "id": msg.id,
+                "sender_id": msg.sender_id,
+                "text": text,
+                "created_at": msg.created_at,
+                "status": "read"  # 簡易版
+            })
+        
         return {
             "thread_id": thread_id,
-            "messages": [
-                {
-                    "id": msg.id,
-                    "sender_id": msg.sender_id,
-                    "text": msg.original_text,
-                    "created_at": msg.created_at,
-                    "status": "read"  # 簡易版
-                }
-                for msg in messages
-            ],
-            "total_count": len(messages),
-            "has_more": len(messages) == limit
+            "messages": result_messages,
+            "total_count": len(result_messages),
+            "has_more": len(result_messages) == limit
         }
         
     except Exception as e:

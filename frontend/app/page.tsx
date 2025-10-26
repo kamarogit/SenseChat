@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MessageCircle, Users, Settings, Send } from 'lucide-react'
+import { MessageCircle, Users, Settings, Send, ChevronDown } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
 import { useUserStore } from '@/stores/userStore'
 import { ChatInterface } from '@/components/ChatInterface'
@@ -10,21 +10,16 @@ import { MessageInput } from '@/components/MessageInput'
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true)
-  const { currentUser, setCurrentUser } = useUserStore()
-  const { messages, loadMessages } = useChatStore()
+  const [showUserSelector, setShowUserSelector] = useState(false)
+  const { currentUser, setCurrentUser, availableUsers, loadUsers } = useUserStore()
+  const { messages, loadMessages, clearMessages, loadUserChatHistory, saveUserChatHistory } = useChatStore()
 
   useEffect(() => {
     // 初期化処理
     const initializeApp = async () => {
       try {
         // ユーザー情報の取得
-        const response = await fetch('/api/v1/users')
-        if (response.ok) {
-          const data = await response.json()
-          if (data.users && data.users.length > 0) {
-            setCurrentUser(data.users[0])
-          }
-        }
+        await loadUsers()
         
         // メッセージの読み込み
         await loadMessages()
@@ -37,7 +32,14 @@ export default function HomePage() {
     }
 
     initializeApp()
-  }, [setCurrentUser, loadMessages])
+  }, [setCurrentUser, loadUsers, loadMessages])
+
+  const handleUserChange = (user: any) => {
+    setCurrentUser(user)
+    setShowUserSelector(false)
+    // ユーザー切り替え時にチャット内容をクリア（新しいユーザーとの履歴は空）
+    clearMessages()
+  }
 
   if (isLoading) {
     return (
@@ -50,7 +52,7 @@ export default function HomePage() {
     )
   }
 
-  if (!currentUser) {
+  if (!currentUser && availableUsers.length > 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full space-y-8">
@@ -71,7 +73,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" onClick={() => setShowUserSelector(false)}>
       {/* ヘッダー */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -83,7 +85,7 @@ export default function HomePage() {
               </h1>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 relative">
               <div className="flex items-center space-x-2">
                 <Users className="h-5 w-5 text-gray-400" />
                 <span className="text-sm text-gray-600">
@@ -91,9 +93,46 @@ export default function HomePage() {
                 </span>
               </div>
               
-              <button className="p-2 text-gray-400 hover:text-gray-600">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowUserSelector(!showUserSelector)
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
                 <Settings className="h-5 w-5" />
               </button>
+              
+              {/* ユーザー選択ドロップダウン */}
+              {showUserSelector && (
+                <div 
+                  className="absolute right-0 top-12 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-20"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="py-1">
+                    {availableUsers.length === 0 ? (
+                      <div className="px-4 py-2 text-sm text-gray-500">
+                        ユーザーを読み込み中...
+                      </div>
+                    ) : (
+                      availableUsers.map((user) => (
+                        <button
+                          key={user.id}
+                          onClick={() => handleUserChange(user)}
+                          className={`w-full text-left px-4 py-3 text-sm hover:bg-gray-100 transition-colors ${
+                            currentUser?.id === user.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
+                        >
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {user.language === 'ja' ? '日本語' : 'English'} • {user.style_preset}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

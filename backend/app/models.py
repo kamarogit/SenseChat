@@ -65,6 +65,22 @@ class Inbox(Base):
     status = Column(String, default="unread")  # unread, read
     created_at = Column(DateTime, default=func.now())
 
+class MessageRendering(Base):
+    """メッセージ再構成モデル（SenseChat MVP専用）"""
+    __tablename__ = "message_renderings"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    message_id = Column(String, ForeignKey("messages.id"), nullable=False)
+    recipient_id = Column(String, ForeignKey("users.id"), nullable=False)
+    rendered_text = Column(Text, nullable=False)  # 受信者向けに再構成されたテキスト
+    confidence = Column(String)  # 再構成の信頼度
+    style_applied = Column(String)  # 適用されたスタイル
+    created_at = Column(DateTime, default=func.now())
+    
+    # リレーション
+    message = relationship("Message")
+    recipient = relationship("User")
+
 class KBItem(Base):
     """ナレッジベースアイテム（簡易版）"""
     __tablename__ = "kb_items"

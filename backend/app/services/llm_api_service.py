@@ -56,7 +56,9 @@ class LLMAPIService:
                 print(f"Provider {provider_name} failed: {e}")
                 continue
         
-        raise Exception("All LLM providers failed")
+        # すべてのプロバイダーが失敗した場合のフォールバック
+        print("⚠️  All LLM providers failed, using fallback reconstruction")
+        return self._fallback_reconstruction(summary, style_preset, language)
     
     def _build_reconstruction_prompt(
         self, 
@@ -88,6 +90,28 @@ class LLMAPIService:
 - 自然で読みやすい文章にする
 """
         return prompt
+    
+    def _fallback_reconstruction(self, summary: str, style_preset: str, language: str) -> Tuple[str, float]:
+        """フォールバック用の簡単な再構成"""
+        
+        # スタイルに応じた簡単な変換
+        if style_preset == 'emoji_casual':
+            if language == 'ja':
+                reconstructed = f"こんにちは！😊 {summary} について何かお話ししたいことがあるの？"
+            else:
+                reconstructed = f"Hi! 😊 What would you like to talk about regarding {summary}?"
+        elif style_preset == 'biz_formal':
+            if language == 'ja':
+                reconstructed = f"お疲れ様です。{summary} についてご相談がございます。"
+            else:
+                reconstructed = f"Good day. I would like to discuss {summary} with you."
+        else:  # technical or default
+            if language == 'ja':
+                reconstructed = f"技術的な内容について: {summary}"
+            else:
+                reconstructed = f"Technical discussion: {summary}"
+        
+        return reconstructed, 0.5  # 低い信頼度
 
 class OpenRouterClient:
     """OpenRouter API クライアント"""

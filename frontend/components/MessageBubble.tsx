@@ -18,7 +18,7 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
       case 'delivered':
         return <CheckCheck className="h-3 w-3 text-gray-400" />
       case 'read':
-        return <CheckCheck className="h-3 w-3 text-primary-600" />
+        return <CheckCheck className="h-3 w-3 text-blue-600" />
       default:
         return <Clock className="h-3 w-3 text-gray-400" />
     }
@@ -35,8 +35,12 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
     }
   }
 
+  // 一般的なチャットアプリのルール:
+  // - 右側（青色）: 自分が送信したメッセージ (isOwn = true)
+  // - 左側（白色）: 相手から受信したメッセージ (isOwn = false)
+  
   return (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4`}>
       <div className={`max-w-xs lg:max-w-md`}>
         {/* メッセージバブル */}
         <div
@@ -49,7 +53,7 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
           {/* 要約がある場合 */}
           {message.summary && message.summary !== message.text && (
             <div className={`mt-2 p-2 rounded text-xs ${
-              isOwn ? 'bg-primary-500 bg-opacity-20' : 'bg-gray-100'
+              isOwn ? 'bg-white bg-opacity-20' : 'bg-gray-100'
             }`}>
               <p className="font-medium mb-1">要約:</p>
               <p>{message.summary}</p>
