@@ -7,7 +7,7 @@ import { MessageBubble } from './MessageBubble'
 import { Loader2, ChevronDown, UserPlus } from 'lucide-react'
 
 export function ChatInterface() {
-  const { messages, isLoading, error, selectedRecipient, setSelectedRecipient, clearMessages, loadUserChatHistory, saveUserChatHistory } = useChatStore()
+  const { messages, isLoading, error, selectedRecipient, setSelectedRecipient, clearMessages, loadUserChatHistory } = useChatStore()
   const { currentUser, availableUsers, loadUsers } = useUserStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [showRecipientSelector, setShowRecipientSelector] = useState(false)
@@ -37,10 +37,7 @@ export function ChatInterface() {
   }
 
          const handleRecipientChange = (user: any) => {
-           // 現在のチャット履歴を保存
-           if (currentUser && selectedRecipient) {
-             saveUserChatHistory(currentUser.id, selectedRecipient)
-           }
+           console.log(`🔄 チャット相手を変更: ${selectedRecipient} → ${user.id}`)
            
            setSelectedRecipient(user.id)
            setShowRecipientSelector(false)
@@ -57,8 +54,19 @@ export function ChatInterface() {
            return recipient ? recipient.name : 'チャット相手を選択'
          }
 
+  // 表示対象メッセージを抽出
+  // - 自分が送ったメッセージ: そのまま表示（オリジナルテキスト）
+  // - 自分が受信したメッセージ: 再構成テキストのみ表示（相手=selectedRecipient）
+  const displayedMessages = messages.filter((m) => {
+    const isOwn = m.sender_id === currentUser?.id
+    if (isOwn) return m.message_type === 'sent'
+    if (m.message_type !== 'received') return false
+    if (selectedRecipient) return m.sender_id === selectedRecipient
+    return true
+  })
+
   return (
-    <div className="flex flex-col h-96 relative">
+    <div className="flex flex-col h-[80vh] relative">
       {/* チャットヘッダー */}
       <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
         <div className="flex items-center space-x-4">
@@ -108,18 +116,25 @@ export function ChatInterface() {
 
       {/* メッセージリスト */}
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50 rounded-lg">
-        {messages.length === 0 ? (
+        {displayedMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <p className="text-gray-500 mb-2">まだメッセージがありません</p>
               <p className="text-sm text-gray-400">
-                下の入力欄からメッセージを送信してください
+                {selectedRecipient ? '下の入力欄からメッセージを送信してください' : 'チャット相手を選択してください'}
               </p>
+              {selectedRecipient && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-blue-700">
+                    💡 SenseChat MVP: 送信したメッセージは受信者向けに再構成されます
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-            {messages.map((message) => (
+            {displayedMessages.map((message) => (
               <MessageBubble
                 key={message.id}
                 message={message}

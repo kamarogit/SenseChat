@@ -201,6 +201,12 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Do not commit environment rules file
+.cursor/rules/envaiomental.mdc
+
+# Exclude Cursor working directory entirely
+.cursor/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

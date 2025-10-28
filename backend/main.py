@@ -11,7 +11,9 @@ import os
 from contextlib import asynccontextmanager
 
 from app.database import init_db
+from app.config import get_settings
 from app.routers import auth, messages, users, health
+from app.websocket_manager import websocket_manager
 from app.middleware import logging_middleware, rate_limit_middleware
 from app.exceptions import setup_exception_handlers
 
@@ -49,13 +51,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS設定
+# CORS設定（環境変数から制御）
+settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
 # カスタムミドルウェア
@@ -70,6 +73,8 @@ app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(messages.router, prefix="/api/v1", tags=["messages"])
+# Socket.IO (WebSocket) をFastAPIに直接マウント
+app.mount("/api/v1/ws", websocket_manager.app)
 
 
 # ルートエンドポイント

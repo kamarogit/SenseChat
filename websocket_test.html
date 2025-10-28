@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>WebSocket Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    
+    <script>
+        const socket = io('http://localhost:8000', {
+            path: '/api/v1/ws/socket.io',
+            transports: ['websocket']
+        });
+        
+        socket.on('connect', () => {
+            document.getElementById('status').textContent = 'Connected: ' + socket.id;
+            socket.emit('user_register', { user_id: 'test_user' });
+        });
+        
+        socket.on('disconnect', () => {
+            document.getElementById('status').textContent = 'Disconnected';
+        });
+        
+        socket.on('connection_established', (data) => {
+            document.getElementById('messages').innerHTML += '<p>Connection established: ' + JSON.stringify(data) + '</p>';
+        });
+        
+        socket.on('online_users', (data) => {
+            document.getElementById('messages').innerHTML += '<p>Online users: ' + JSON.stringify(data) + '</p>';
+        });
+        
+        socket.on('user_status', (data) => {
+            document.getElementById('messages').innerHTML += '<p>User status: ' + JSON.stringify(data) + '</p>';
+        });
+        
+        socket.on('error', (error) => {
+            document.getElementById('messages').innerHTML += '<p style="color: red;">Error: ' + JSON.stringify(error) + '</p>';
+        });
+    </script>
+</body>
+</html>

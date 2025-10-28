@@ -962,8 +962,8 @@ select {
 .h-8 {
   height: 2rem;
 }
-.h-96 {
-  height: 24rem;
+.h-\[80vh\] {
+  height: 80vh;
 }
 .h-full {
   height: 100%;
@@ -1280,6 +1280,12 @@ select {
 }
 .underline {
   text-decoration-line: underline;
+}
+.opacity-50 {
+  opacity: 0.5;
+}
+.opacity-75 {
+  opacity: 0.75;
 }
 .shadow-lg {
   --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);

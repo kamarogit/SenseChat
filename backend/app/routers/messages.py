@@ -8,9 +8,10 @@ from app.schemas import (
     DeliverRequest, DeliverResponse
 )
 from app.database import get_db
-from app.models import Message, Thread, Inbox, User, MessageRendering
+from app.models import Message, Thread, Inbox, User
 from app.services.embedding_service import EmbeddingService
 from app.services.llm_api_service import LLMAPIService
+from app.websocket_manager import websocket_manager
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
@@ -57,7 +58,8 @@ async def embed_message(
             request.slots
         )
         
-        # 4. データベース保存
+        # 4. データベース保存（要約とベクトルのみ）
+        from datetime import timedelta
         message = Message(
             thread_id=None,  # 新規スレッド
             sender_id=current_user,
@@ -65,7 +67,7 @@ async def embed_message(
             vector_id=vector_id,
             slots=json.dumps(slots),
             lang_hint=request.lang_hint,
-            original_text=request.text
+            expires_at=datetime.now() + timedelta(hours=24)  # 24時間後自動削除
         )
         
         db.add(message)
@@ -81,6 +83,7 @@ async def embed_message(
             slots=slots,
             created_at=message.created_at,
             processing_time_ms=int(processing_time)
+            # original_text は返さない（クライアント側に保存）
         )
         
     except Exception as e:
@@ -118,26 +121,35 @@ async def render_message(
             neighbors=neighbors
         )
         
-        # 5. 再構成されたテキストをDBに保存
-        rendering = MessageRendering(
-            message_id=message.id,
-            recipient_id=request.recipient_id,
-            rendered_text=rendered_text,
-            confidence=str(confidence),
-            style_applied=recipient.style_preset
-        )
-        
-        db.add(rendering)
-        db.commit()
-        db.refresh(rendering)
-        
-        return RenderResponse(
+        # 5. 再構成されたテキストをクライアント側に返す
+        response = RenderResponse(
             text=rendered_text,
             confidence=confidence,
             used_neighbors=neighbors,
             slots=json.loads(message.slots or "{}"),
             style_applied=recipient.style_preset
         )
+        
+        # 6. WebSocketでリアルタイム通知を送信
+        try:
+            await websocket_manager.broadcast_new_message(
+                message_data={
+                    "message_id": message.id,
+                    "text": rendered_text,
+                    "summary": message.summary,
+                    "sender_id": message.sender_id,
+                    "recipient_id": request.recipient_id,
+                    "confidence": confidence,
+                    "created_at": message.created_at.isoformat()
+                },
+                sender_id=message.sender_id,
+                recipient_id=request.recipient_id
+            )
+        except Exception as e:
+            # WebSocket通知の失敗はログに記録するが、APIレスポンスは継続
+            print(f"WebSocket通知エラー: {e}")
+        
+        return response
         
     except HTTPException:
         raise
@@ -152,11 +164,29 @@ async def deliver_message(
 ):
     """メッセージを指定ユーザーに配信"""
     try:
-        # 配信レコード作成
+        # 0. メッセージの存在確認（送信者情報取得のため）
+        message = db.query(Message).filter(Message.id == request.message_id).first()
+        if not message:
+            raise HTTPException(status_code=404, detail="メッセージが見つかりません")
+
+        # 1. スレッドが指定されているが未存在の場合は作成（MVP: 単一デフォルトスレッドを許容）
+        thread_id = request.thread_id
+        if thread_id:
+            existing_thread = db.query(Thread).filter(Thread.id == thread_id).first()
+            if not existing_thread:
+                new_thread = Thread(
+                    id=thread_id,
+                    created_by=message.sender_id,
+                    title="default"
+                )
+                db.add(new_thread)
+                db.flush()  # INSERTを確定してFK整合性を満たす
+
+        # 2. 配信レコード作成
         delivery = Inbox(
             user_id=request.to_user_id,
             message_id=request.message_id,
-            thread_id=request.thread_id,
+            thread_id=thread_id,
             status="unread"
         )
         
@@ -192,22 +222,12 @@ async def get_thread_messages(
         
         result_messages = []
         for msg in messages:
-            # 送信者の場合は元のテキスト、受信者の場合は再構成されたテキスト
-            if msg.sender_id == current_user:
-                # 送信者: 元のテキストを表示
-                text = msg.original_text
-            else:
-                # 受信者: 再構成されたテキストを取得
-                rendering = db.query(MessageRendering).filter(
-                    MessageRendering.message_id == msg.id,
-                    MessageRendering.recipient_id == current_user
-                ).first()
-                text = rendering.rendered_text if rendering else msg.original_text
-            
+            # クライアント側保存対応: 要約のみを返す
+            # 実際のテキスト（元のテキスト or 再構成されたテキスト）はクライアント側で管理
             result_messages.append({
                 "id": msg.id,
                 "sender_id": msg.sender_id,
-                "text": text,
+                "text": msg.summary,  # 要約のみ
                 "created_at": msg.created_at,
                 "status": "read"  # 簡易版
             })

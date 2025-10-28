@@ -50,13 +50,20 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
         >
           <p className="text-sm leading-relaxed">{message.text}</p>
           
-          {/* 要約がある場合 */}
+          {/* SenseChat MVP: 要約情報表示 */}
           {message.summary && message.summary !== message.text && (
             <div className={`mt-2 p-2 rounded text-xs ${
               isOwn ? 'bg-white bg-opacity-20' : 'bg-gray-100'
             }`}>
               <p className="font-medium mb-1">要約:</p>
-              <p>{message.summary}</p>
+              <p className="text-xs opacity-75">{message.summary}</p>
+            </div>
+          )}
+          
+          {/* SenseChat MVP: デバッグ情報（開発時のみ） */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-1 text-xs opacity-50">
+              ID: {message.id} | Status: {message.status}
             </div>
           )}
         </div>

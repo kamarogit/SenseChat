@@ -1,4 +1,38 @@
 services:
+  # PostgreSQL データベース
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=sensechat
+      - POSTGRES_USER=sensechat
+      - POSTGRES_PASSWORD=sensechat_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sensechat-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sensechat -d sensechat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (WebSocket Pub/Sub用)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sensechat-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # フロントエンド (Next.js)
   frontend:
     build:
@@ -26,7 +60,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=sqlite:///./data/sensechat.db
+      - DATABASE_URL=postgresql://sensechat:sensechat_password@postgres:5432/sensechat
       - USERS_CONFIG=/app/config/users.json
       - LOG_LEVEL=INFO
       - DEBUG=true
@@ -39,6 +73,11 @@ services:
       - ./config:/app/config
       - ./data:/app/data
       - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - sensechat-network
 
@@ -64,6 +103,10 @@ networks:
     driver: bridge
 
 volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
   data:
     driver: local
   logs:

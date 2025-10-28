@@ -1,6 +1,6 @@
 """
 データベース設定とセッション管理
-SQLite使用（簡易版）
+SQLite（開発）とPostgreSQL（本番）の両方に対応
 """
 
 from sqlalchemy import create_engine, MetaData
@@ -12,19 +12,33 @@ from pathlib import Path
 # データベースURL
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/sensechat.db")
 
-# データディレクトリの作成
-data_dir = Path("./data")
-data_dir.mkdir(exist_ok=True)
-
-# SQLite用の設定
+# データディレクトリの作成（SQLite用）
 if DATABASE_URL.startswith("sqlite"):
+    data_dir = Path("./data")
+    data_dir.mkdir(exist_ok=True)
+
+# データベースエンジンの作成
+if DATABASE_URL.startswith("sqlite"):
+    # SQLite用の設定
     engine = create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False},  # SQLite用
         echo=os.getenv("DEBUG", "false").lower() == "true"
     )
+elif DATABASE_URL.startswith("postgresql"):
+    # PostgreSQL用の設定
+    engine = create_engine(
+        DATABASE_URL,
+        echo=os.getenv("DEBUG", "false").lower() == "true",
+        pool_pre_ping=True,  # 接続の健全性チェック
+        pool_recycle=300,    # 5分で接続をリサイクル
+    )
 else:
-    engine = create_engine(DATABASE_URL)
+    # その他のデータベース
+    engine = create_engine(
+        DATABASE_URL,
+        echo=os.getenv("DEBUG", "false").lower() == "true"
+    )
 
 # セッションファクトリー
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -46,7 +60,7 @@ async def init_db():
     try:
         # テーブル作成
         Base.metadata.create_all(bind=engine)
-        print("✅ データベース初期化完了")
+        print(f"✅ データベース初期化完了: {DATABASE_URL.split('://')[0]}")
     except Exception as e:
         print(f"❌ データベース初期化エラー: {e}")
         raise

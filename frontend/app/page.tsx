@@ -12,7 +12,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showUserSelector, setShowUserSelector] = useState(false)
   const { currentUser, setCurrentUser, availableUsers, loadUsers } = useUserStore()
-  const { messages, loadMessages, clearMessages, loadUserChatHistory, saveUserChatHistory } = useChatStore()
+  const { messages, loadMessages, clearMessages, loadUserChatHistory, saveUserChatHistory, connectWebSocket, disconnectWebSocket, isWebSocketConnected } = useChatStore()
 
   useEffect(() => {
     // 初期化処理
@@ -32,13 +32,41 @@ export default function HomePage() {
     }
 
     initializeApp()
-  }, [setCurrentUser, loadUsers, loadMessages])
+    
+    // クリーンアップ
+    return () => {
+      disconnectWebSocket()
+    }
+  }, [setCurrentUser, loadUsers, loadMessages, disconnectWebSocket])
 
-  const handleUserChange = (user: any) => {
+  // 既にユーザーが選択されている（永続化されている）場合、自動でWebSocket接続
+  useEffect(() => {
+    const autoConnect = async () => {
+      if (currentUser && !isWebSocketConnected) {
+        try {
+          await connectWebSocket(currentUser.id)
+          console.log('WebSocket自動接続完了:', currentUser.id)
+        } catch (e) {
+          console.error('WebSocket自動接続エラー:', e)
+        }
+      }
+    }
+    autoConnect()
+  }, [currentUser, isWebSocketConnected, connectWebSocket])
+
+  const handleUserChange = async (user: any) => {
     setCurrentUser(user)
     setShowUserSelector(false)
     // ユーザー切り替え時にチャット内容をクリア（新しいユーザーとの履歴は空）
     clearMessages()
+    
+    // WebSocket接続を確立
+    try {
+      await connectWebSocket(user.id)
+      console.log('WebSocket接続完了:', user.id)
+    } catch (error) {
+      console.error('WebSocket接続エラー:', error)
+    }
   }
 
   if (isLoading) {

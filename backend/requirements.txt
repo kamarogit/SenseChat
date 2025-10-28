@@ -5,10 +5,14 @@
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
+python-socketio==5.10.0
+redis==5.0.1
+gunicorn==21.2.0
 
 # Database
 sqlalchemy==2.0.23
 alembic==1.12.1
+psycopg2-binary==2.9.9
 # sqlite3 は Python 標準ライブラリなので削除
 
 # AI/ML
@@ -34,6 +38,10 @@ passlib[bcrypt]==1.7.4
 pydantic==2.5.0
 python-dotenv==1.0.0
 loguru==0.7.2
+psutil==5.9.6
+
+# Configuration
+pydantic-settings==2.0.3
 
 # Development (optional)
 # pytest==7.4.3

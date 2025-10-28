@@ -37,22 +37,39 @@ class Thread(Base):
     messages = relationship("Message", back_populates="thread")
 
 class Message(Base):
-    """メッセージモデル（簡易版）"""
+    """メッセージモデル（軽量化版 - クライアント側保存対応）"""
     __tablename__ = "messages"
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     thread_id = Column(String, ForeignKey("threads.id"))
     sender_id = Column(String, ForeignKey("users.id"))
-    summary = Column(Text, nullable=False)
+    summary = Column(Text, nullable=False)  # 要約のみ（元のテキストはクライアント側に保存）
     vector_id = Column(String)  # FAISS内のID
     slots = Column(Text)  # JSON文字列
     lang_hint = Column(String)
-    original_text = Column(Text)
     created_at = Column(DateTime, default=func.now())
+    expires_at = Column(DateTime)  # 自動削除用（24時間後）
     
     # リレーション
     thread = relationship("Thread", back_populates="messages")
     sender = relationship("User", back_populates="messages")
+    contents = relationship("MessageContent", back_populates="message", cascade="all, delete-orphan")
+
+class MessageContent(Base):
+    """メッセージコンテンツモデル（サーバー側永続化対応）"""
+    __tablename__ = "message_contents"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    message_id = Column(String, ForeignKey("messages.id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)  # 送信者または受信者
+    content_type = Column(String, nullable=False)  # 'original' or 'rendered'
+    text = Column(Text, nullable=False)  # 元のテキストまたは再構成されたテキスト
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # リレーション
+    message = relationship("Message", back_populates="contents")
+    user = relationship("User")
 
 class Inbox(Base):
     """受信箱モデル（簡易版）"""
@@ -64,22 +81,6 @@ class Inbox(Base):
     thread_id = Column(String, ForeignKey("threads.id"))
     status = Column(String, default="unread")  # unread, read
     created_at = Column(DateTime, default=func.now())
-
-class MessageRendering(Base):
-    """メッセージ再構成モデル（SenseChat MVP専用）"""
-    __tablename__ = "message_renderings"
-    
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    message_id = Column(String, ForeignKey("messages.id"), nullable=False)
-    recipient_id = Column(String, ForeignKey("users.id"), nullable=False)
-    rendered_text = Column(Text, nullable=False)  # 受信者向けに再構成されたテキスト
-    confidence = Column(String)  # 再構成の信頼度
-    style_applied = Column(String)  # 適用されたスタイル
-    created_at = Column(DateTime, default=func.now())
-    
-    # リレーション
-    message = relationship("Message")
-    recipient = relationship("User")
 
 class KBItem(Base):
     """ナレッジベースアイテム（簡易版）"""
