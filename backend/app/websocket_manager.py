@@ -43,8 +43,8 @@ class SocketManager:
         # Socket.IOイベントハンドラーを設定
         self.setup_event_handlers()
         
-        # Redis接続とメッセージ処理を初期化
-        asyncio.create_task(self._init_redis())
+        # Redis初期化フラグ
+        self._redis_initialized = False
     
     def setup_event_handlers(self):
         """Socket.IOイベントハンドラーを設定"""
@@ -141,15 +141,23 @@ class SocketManager:
                 return user_id
         return None
     
-    async def _init_redis(self):
-        """Redis接続を初期化"""
+    async def initialize_redis(self):
+        """Redis接続を初期化（FastAPIスタートアップで呼び出し）"""
+        if self._redis_initialized:
+            return
+        
         try:
             await self.pubsub.subscribe('chat_messages')
             # Redisメッセージを処理するタスクを開始
             asyncio.create_task(self._handle_redis_messages())
+            self._redis_initialized = True
             logger.info("Redis接続を初期化しました")
         except Exception as e:
             logger.error(f"Redis接続エラー: {e}")
+    
+    async def _init_redis(self):
+        """Redis接続を初期化（内部用）"""
+        await self.initialize_redis()
     
     async def _handle_redis_messages(self):
         """Redisからのメッセージを処理"""

@@ -34,6 +34,9 @@ async def lifespan(app: FastAPI):
     app.state.embedding_service = EmbeddingService()
     app.state.llm_api_service = LLMAPIService()
     
+    # WebSocketマネージャーのRedis初期化
+    await websocket_manager.initialize_redis()
+    
     print("✅ 初期化完了")
     
     yield

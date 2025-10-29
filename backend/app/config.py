@@ -18,10 +18,10 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     # データベース設定
-    database_url: str
+    database_url: Optional[str] = None
     postgres_db: str = "sensechat"
     postgres_user: str = "sensechat"
-    postgres_password: str
+    postgres_password: str = ""
     postgres_host: str = "localhost"
     postgres_port: int = 5432
     
